@@ -1,0 +1,12 @@
+{
+    "cmake.sourceDirectory": "/home/zeyadcode/ros2_ws/src/my_pkg_cpp",
+    "ROS2.distro": "jazzy",
+    "python.autoComplete.extraPaths": [
+        "/home/zeyadcode/ros2_ws/install/my_pkg_py/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/zeyadcode/ros2_ws/install/my_pkg_py/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ]
+}
