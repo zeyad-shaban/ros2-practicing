@@ -11,8 +11,9 @@ find_package(rosidl_default_generators REQUIRED)
 
 set(msg_files
   "msg/HardwareStatus.msg"
+  "msg/LedStateArr.msg"
   "srv/ComputeArea.srv"
-  "srv/LedState.srv"
+  "srv/SetLedState.srv"
 )
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
