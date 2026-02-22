@@ -1,0 +1,9 @@
+/num_publisher1:
+  ros__parameters:
+    num: 2
+    hz: 2.0
+    
+/num_publisher2:
+  ros__parameters:
+    num: 10
+    hz: 10.0

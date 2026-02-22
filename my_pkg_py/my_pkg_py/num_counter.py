@@ -12,9 +12,9 @@ class NumCounter(Node):
         self.count = 0
 
         self.subscriber = self.create_subscription(
-            Int64, "/number", self.num_received_cb, 10
+            Int64, "number", self.num_received_cb, 10
         )
-        self.publisher_ = self.create_publisher(Int64, "/number_counter", 10)
+        self.publisher_ = self.create_publisher(Int64, "number_counter", 10)
 
     def num_received_cb(self, msg: Int64):
         self.count += msg.data

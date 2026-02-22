@@ -9,16 +9,19 @@ class NumPublisher(Node):
         super().__init__("num_publisher")
         self.get_logger().info(f"num_publisher Started")
 
-        self.fixed_num = 5
-        self.hz = 10
+        self.declare_parameter("num", 5)
+        self.declare_parameter("hz", 2.0)
+        
+        self.num = self.get_parameter("num").value
+        self.hz: float = self.get_parameter("hz").value # type: ignore
 
-        self.publisher_ = self.create_publisher(Int64, "/number", 10)
+        self.publisher_ = self.create_publisher(Int64, "number", 10)
 
         self.create_timer(1 / self.hz, self.publish_num_cb)
 
     def publish_num_cb(self):
         msg = Int64()
-        msg.data = self.fixed_num
+        msg.data = self.num
         self.publisher_.publish(msg)
 
 
