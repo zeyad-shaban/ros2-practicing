@@ -8,5 +8,7 @@
     "python.analysis.extraPaths": [
         "/home/zeyadcode/ros2_ws/install/my_pkg_py/lib/python3.12/site-packages",
         "/opt/ros/jazzy/lib/python3.12/site-packages"
-    ]
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": []
 }

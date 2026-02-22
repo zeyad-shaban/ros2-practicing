@@ -32,6 +32,10 @@ setup(
             "add_two_ints_server = my_pkg_py.add_two_ints_server:main",
             "add_two_ints_client_no_oop = my_pkg_py.add_two_ints_client_no_oop:main",
             "add_two_ints_client = my_pkg_py.add_two_ints_client:main",
+            "hw_status_publisher = my_pkg_py.hw_status_publisher:main",
+            "compute_area_server = my_pkg_py.compute_area_server:main",
+            "battery_node = my_pkg_py.battery_node:main",
+            "led_node = my_pkg_py.led_node:main",
         ],
     },
 )
