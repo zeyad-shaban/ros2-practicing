@@ -9,8 +9,10 @@ class RobotNewsStation(Node):
         super().__init__("robot_news_station")
         self.get_logger().info("Robot News Station Started")
 
-        self.robot_name = "X001"
-        self.hz = 2
+        self.declare_parameter("robot_name", "X001")
+        self.declare_parameter("hz", 2.0)
+        self.robot_name = self.get_parameter("robot_name").value
+        self.hz: float = self.get_parameter("hz").value # type: ignore
 
         self.publisher_ = self.create_publisher(String, "robot_news", 10)
         self.timer_ = self.create_timer(1 / self.hz, self.publish_news)
