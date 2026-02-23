@@ -27,16 +27,21 @@ def generate_launch_description():
             executable='turtle_controller',
             parameters=[
                 {'Kp_v': 2.0},
-                {'Kp_w': 2.0},
+                {'Kp_w': 3.0},
+                {'kill_dist_thresh': 0.7},
             ]
         ),
     )
     
-    # Turtle Spawner
+    # World Manager
     ld.add_action(
         Node(
             package='turtle_eater',
             executable='world_manager',
+            parameters=[
+                {'spawn_period': 2.0},
+            ]
         )
     )
+    
     return ld

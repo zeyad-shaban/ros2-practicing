@@ -6,6 +6,7 @@ import random
 import math
 from turtlesim.srv import Spawn, Kill
 from turtle_eater_interface.msg import AliveTurtles, TurtleInfo
+from turtlesim.msg import Pose
 
 # teh code is getting quite hard to manage, stuff are mixed together, cant' tell which function is internal which is publisher which is service :( i'm not following any conventiosn for what named what an dhow 
 # the fact i have to put commnts for cod to be readable means it sucks
@@ -17,6 +18,7 @@ class WorldManagerNode(Node):
         self.declare_parameter("spawn_period", 5.0)
         self.spawn_period: float = self.get_parameter("spawn_period").value # type: ignore
         self.alive_turtles: list[TurtleInfo] = []
+        self.pos_subs = {}
         
         # spawning random turtles
         self.spawn_turtle_serivce = self.create_service(Spawn, "spawn_turtle", self.cb_spawn_turtle) # the naming is fucken bad and confusing i really suck t this
@@ -25,13 +27,14 @@ class WorldManagerNode(Node):
         
         # publishing alive turtles
         self.alive_turtles_publisher = self.create_publisher(AliveTurtles, "/alive_turtles", 10)
-        self.create_timer(1, self.cb_publish_alive_turtles)
+        self.create_timer(1/10, self.cb_publish_alive_turtles)
         
         # Killing Turtle
         self.kill_turtle_client = self.create_client(Kill, "kill")
         self.catch_turtle_service = self.create_service(Kill, "catch_turtle", self.cb_kill_turtle)
         
         self.cb_kill_turtle(Kill.Request(name="turtle1"), Kill.Response())
+        
         
         
     # === publish alive status ====
@@ -69,8 +72,17 @@ class WorldManagerNode(Node):
         turtle_info.y = y
         turtle_info.theta = theta
         
-        
         self.alive_turtles.append(turtle_info)
+        
+        self.pos_subs[res.name] = self.create_subscription(Pose, f"{res.name}/pose", lambda msg: self.cb_update_pos(res.name, msg), 10)
+        
+    def cb_update_pos(self, name: str, msg: Pose):
+        for i, turtle_info in enumerate(self.alive_turtles):
+            if turtle_info.name == name:
+                self.alive_turtles[i].x = msg.x
+                self.alive_turtles[i].y = msg.y
+                self.alive_turtles[i].theta = msg.theta
+                break
         
     def spawn_random_turtle(self):
         req = Spawn.Request()
@@ -91,6 +103,11 @@ class WorldManagerNode(Node):
         future = self.kill_turtle_client.call_async(turtlesim_req)
         future.add_done_callback(lambda fut: self.cb_kill_turtle_done(fut, req.name))
         
+        sub = self.pos_subs.get(req.name)
+        if sub is not None:
+            self.destroy_subscription(sub)
+            del self.pos_subs[req.name]
+            
         return res
         
     def cb_kill_turtle_done(self, fut, name: str):

@@ -9,6 +9,10 @@ from turtlesim.srv import Spawn
 from turtle_eater_interface.msg import TurtleInfo, AliveTurtles
 from geometry_msgs.msg import Vector3
 
+def normalize_angle(a):
+    # map to [-pi, pi)
+    return (a + math.pi) % (2*math.pi) - math.pi
+
 # my programmer gut is telling me this node is doing way too much
 class TurtleControllerNode(Node):
     def __init__(self):
@@ -17,14 +21,18 @@ class TurtleControllerNode(Node):
         
         self.declare_parameter("killer_name", "killer")
         self.declare_parameter("move_hz", 7)
-        self.declare_parameter("Kp_v", 2.0)
-        self.declare_parameter("Kp_w", 2.0)
+        self.declare_parameter("Kp_v", 1.0)
+        self.declare_parameter("Kp_w", 1.0)
+        self.declare_parameter("kill_dist_thresh", 0.7)
         
-        self.killer_name = self.get_parameter("killer_name").value
+        self.killer_name: str = self.get_parameter("killer_name").value # type: ignore
         self.move_hz: int = self.get_parameter("move_hz").value # type: ignore
-        self.Kp_v = self.get_parameter('Kp_v').value
-        self.Kp_w = self.get_parameter('Kp_w').value
+        self.Kp_v: float = self.get_parameter('Kp_v').value # type: ignore
+        self.Kp_w: float = self.get_parameter('Kp_w').value # type: ignore
+        self.kill_dist_thresh: float = self.get_parameter('kill_dist_thresh').value # type: ignore
         self.target = None
+        self.killer = None
+        self.alive_turtles: list[TurtleInfo] = []
         
         self.vel = Vector3(x=0.0, y=0.0, z=0.0)
         self.angular_vel = Vector3(x=0.0, y=0.0, z=0.0)
@@ -34,7 +42,9 @@ class TurtleControllerNode(Node):
         
 
         # killer seeing turtles
-        self.alive_turtles_subscriber = self.create_subscription(AliveTurtles, "/alive_turtles", self.cb_alive_turtles, 10)
+        self.create_timer(1/10, self.cb_set_target_turtle)
+        self.alive_turtles_subscriber = self.create_subscription(AliveTurtles, "/alive_turtles", self.cb_set_alive_turtles, 10)
+        self.catch_turtle_call = self.create_client(Kill, "/catch_turtle")
         
         # killer movement
         self.create_timer(1/self.move_hz, self.cb_move_killer)
@@ -42,20 +52,34 @@ class TurtleControllerNode(Node):
         self.spawn_killer()
         
     def cb_move_killer(self):
+        if self.target is None or self.killer is None:
+            return
+            
+        self.get_logger().info(f"killer pos: {self.killer.x}, {self.killer.y}")
+
         msg = Twist()
         msg.linear = self.vel
         msg.angular = self.angular_vel
         
         self.vel_publisher.publish(msg)
         
-    def cb_alive_turtles(self, turtles: AliveTurtles):
-        # kinda pointless how this would run whenenver something is published, whehter we have a target or not
-        # there can be like lots of turtles that are there and we just cna't be aware of them as we are wiating for next tick there to run this...
-        if self.target is not None:
-            return
+        dx = self.target.x - self.killer.x
+        dy = self.target.y - self.killer.y
+        dist = math.sqrt(dy**2 + dx**2)
+        
+        if dist <= self.kill_dist_thresh:
+            msg = Kill.Request()
+            msg.name = self.target.name
+            future = self.catch_turtle_call.call_async(msg)
+            self.target = None
             
+        
+    def cb_set_alive_turtles(self, turtles: AliveTurtles):
+        self.alive_turtles = turtles.alive_turtles
+        
+    def cb_set_target_turtle(self):
         killer: TurtleInfo | None = None
-        for turtle in turtles.alive_turtles:
+        for turtle in self.alive_turtles:
             turtle: TurtleInfo # i did this for vscode intellisense, not sure if there is a better way to do it
             if turtle.name == self.killer_name:
                 killer = turtle
@@ -68,7 +92,7 @@ class TurtleControllerNode(Node):
         closest_dist = float('inf')
         closest_turtle: TurtleInfo | None = None
         
-        for turtle in turtles.alive_turtles:
+        for turtle in self.alive_turtles:
             turtle: TurtleInfo
             if turtle.name == self.killer_name:
                 continue
@@ -85,14 +109,20 @@ class TurtleControllerNode(Node):
             
         # Calculation to target
         self.target = closest_turtle
+        self.killer = killer
         
         dx = closest_turtle.x - killer.x
         dy = closest_turtle.y - killer.y
         
-        self.vel.x = self.Kp_v * (dx)
-        self.vel.y = self.Kp_v * (dy)
+        dist = math.hypot(dx, dy)
+        desired = math.atan2(dy, dx)
+        yaw_err = (desired - killer.theta + math.pi) % (2*math.pi) - math.pi
         
-        self.angular_vel.z = self.Kp_w * (math.atan2(dy, dx))
+        linear  = self.Kp_v * dist * math.cos(yaw_err)   # or use: Kp_v * dist
+        angular = self.Kp_w * yaw_err
+        
+        self.vel.x = linear
+        self.angular_vel.z = angular
         
     def spawn_killer(self):
         req = Spawn.Request()
